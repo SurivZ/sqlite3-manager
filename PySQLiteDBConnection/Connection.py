@@ -273,6 +273,27 @@ class Connect:
             else:
                 print(f'[!] Error al eliminar la tabla "{table_name}": ', e)
                 return False
+            
+    def execute_custom_query(self, query: str) -> List[Tuple[int | float | str, ...]]:
+        """
+        Ejecuta una consulta personalizada definida por el usuario
+
+        Args:
+            - query: La consulta SQL a realizar
+
+        Returns:
+            - Lista de tuplas que representan lo que la base de datos devuelve.
+        """
+        try:
+            self.__cursor.execute(query)
+            results = self.__cursor.fetchall()
+            return results
+        except Exception as e:
+            if self.raise_exceptions:
+                raise e
+            else:
+                print(f'[!] Error al ejecutar la consulta "{query}": ', e)
+                return []
 
     def close(self) -> None:
         """

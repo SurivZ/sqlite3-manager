@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name='PySQLiteDBConnection',
-    version='1.0.9',
+    version='1.0.9b',
     author='SurivZ',
     author_email='franklinserrano23@email.com',
     description='Este paquete proporciona una clase `Connect` para gestionar bases de datos SQLite3 de manera sencilla y estandarizada.',
-    long_description="""# Py-SQLite-DB-Connection `v1.0.9`
+    long_description="""# Py-SQLite-DB-Connection `v1.0.9b`
 
 Este paquete proporciona una clase `Connect` para gestionar conexiones y operaciones CRUD en bases de datos SQLite3 de manera sencilla y estandarizada, ahora con la capacidad de crear, modificar y eliminar tablas.
 
@@ -172,4 +172,9 @@ database = Connect('path/to/your/database.db', raise_exceptions=True)
     ],
     python_requires='>=3.7',
     install_requires=[],
+    entry_points={
+        'console_scripts': [
+            'connect=PySQLiteDBConnection.cli:main_menu',
+        ],
+    },
 )
