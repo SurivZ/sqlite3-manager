@@ -174,7 +174,8 @@ database = Connect('path/to/your/database.db', raise_exceptions=True)
     install_requires=[],
     entry_points={
         'console_scripts': [
-            'connect=PySQLiteDBConnection.cli:main_menu',
+            'connect=PySQLiteDBConnection.cli:main',
+            'hola=PySQLiteDBConnection.cli:main',
         ],
     },
 )
