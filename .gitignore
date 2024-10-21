@@ -1,0 +1,11 @@
+.venv/
+
+.pytest_cache/
+__pycache__/
+
+*.egg-info/
+sqlite3_manager.egg-info/
+
+.vscode/
+
+*.log
