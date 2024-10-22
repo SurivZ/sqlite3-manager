@@ -8,7 +8,7 @@ setup(
     description='Este paquete proporciona una serie de funcionalidades para gestionar bases de datos SQLite3 de manera sencilla y estandarizada.',
     long_description=open('readme.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/SurivZ/Py-SQLite-DB-Connection',
+    url='https://github.com/SurivZ/sqlite3-manager',
     packages=find_packages(),
     classifiers=[
         'Development Status :: 4 - Beta',
