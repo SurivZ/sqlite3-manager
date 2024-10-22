@@ -43,7 +43,7 @@ pip install .
    Usamos el método `connect()` para establecer una conexión con la base de datos.
 
    ```python
-   from sqlite3_manager import Connect
+   from sqlite3manager import Connect
    conn = Connect('mi_base_de_datos.db')
    conn.connect()
    ```
