@@ -3,8 +3,9 @@
 .pytest_cache/
 __pycache__/
 
+build/
+dist/
 *.egg-info/
-sqlite3_manager.egg-info/
 
 .vscode/
 
