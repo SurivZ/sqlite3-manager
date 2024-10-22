@@ -26,7 +26,7 @@ requests-toolbelt==1.0.0
 rfc3986==2.0.0
 rich==13.9.2
 setuptools==75.2.0
--e git+https://github.com/SurivZ/sqlite3-manager@2e890c3c8986feee5f7cb79a6254714dfbf1d095#egg=sqlite3_manager
+-e git+https://github.com/SurivZ/sqlite3-manager@e53223e4bbcdca20591442a57e8403a684b4d2c5#egg=sqlite3_manager
 twine==5.1.1
 urllib3==2.2.3
 wheel==0.44.0
