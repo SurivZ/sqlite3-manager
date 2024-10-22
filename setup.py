@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sqlite3-manager',
-    version='1.0.0',
+    version='1.0.1',
     author='SurivZ',
     author_email='franklinserrano23@email.com',
     description='Este paquete proporciona una serie de funcionalidades para gestionar bases de datos SQLite3 de manera sencilla y estandarizada.',
