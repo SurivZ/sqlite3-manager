@@ -1,5 +1,5 @@
 import os
-from sqlite3 import OperationalError
+from sqlite3 import IntegrityError, OperationalError
 import pytest
 from sqlite3manager import Connect
 
@@ -68,11 +68,11 @@ def test_insert_invalid_data(db):
         "name": "TEXT NOT NULL",
         "lastname": "TEXT NOT NULL"
     }
-    db.create_table("users", columns, True)
+    db.create_table("users", columns)
 
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(IntegrityError) as excinfo:
         db.insert("users", {"name": "Invalid"})
-    assert "insertion failed" in str(excinfo.value)
+    assert "NOT NULL constraint failed: users.lastname" in str(excinfo.value)
 
 
 def test_bulk_insert(db):
