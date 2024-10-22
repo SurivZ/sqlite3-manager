@@ -3,7 +3,7 @@
 
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
-Este proyecto proporciona una librería para gestionar bases de datos **SQLite3** de manera sencilla y estandarizada. Incluye una interfaz de consola que facilita las operaciones CRUD (Crear, Leer, Actualizar y Eliminar) y otras funcionalidades útiles para manejar bases de datos SQLite.
+Este proyecto proporciona una librería para gestionar bases de datos **SQLite3** de manera sencilla y estandarizada. Incluye funcionalidades útiles para manejar bases de datos SQLite.
 
 ## Características
 
