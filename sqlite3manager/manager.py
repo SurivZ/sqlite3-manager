@@ -242,6 +242,9 @@ class Connect:
             [i] Datos insertados exitosamente
             True
         """
+        if not data:
+            raise ValueError("No hay datos para insertar")
+        
         columns = ', '.join(data.keys())
         values = ', '.join(['?' for _ in range(len(data))])
         query = f"INSERT INTO {table_name} ({columns}) VALUES ({values})"
@@ -271,7 +274,7 @@ class Connect:
             True
         """
         if not data_list:
-            raise ValueError("La lista de datos no puede estar vacía")
+            raise ValueError("No hay datos para insertar")
 
         columns = ', '.join(data_list[0].keys())
         values = ', '.join(['?' for _ in data_list[0].keys()])
