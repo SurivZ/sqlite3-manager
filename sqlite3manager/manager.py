@@ -1,5 +1,6 @@
 from sqlite3 import connect, Cursor, Connection
 from typing import Any as any, Callable, TypeVar, cast
+from threading import local
 
 FuncType = TypeVar('FuncType', bound=Callable)
 
@@ -53,9 +54,7 @@ class Connect:
     """
     path: str
     raise_exceptions: bool
-    __connection: Connection
-    __cursor: Cursor
-    __connection_status: bool = False
+    _local: local
 
     def __init__(self, path: str, raise_exceptions: bool = False) -> None:
         """
@@ -65,6 +64,7 @@ class Connect:
             path (str): Ruta de la base de datos.
             raise_exceptions (bool): Indica si se deben levantar excepciones en caso de error. Por defecto es False.
         """
+        self._local = local()
         self.path = path
         self.raise_exceptions = raise_exceptions
 
@@ -82,6 +82,41 @@ class Connect:
             Estado: Sin conexión
         """
         return f"Base de datos: {self.path}\nEstado: {('Sin conexión', 'Conexión establecida')[self.get_status()]}"
+    
+    def _get_connection(self) -> Connection:
+        """
+        Obtiene la conexión a la base de datos. Si no existe, la crea.
+        
+        Returns:
+            Connection: Conexión a la base de datos.    
+            
+        Example:
+            >>> conn = Connect('mi_db.sqlite')
+            >>> connection = conn._get_connection()
+            >>> print(connection)
+            <sqlite3.Connection object at 0x...>
+        """
+        if not hasattr(self._local, 'connection') or not self._local.connection:
+            self._local.connection = connect(self.path)
+            self._local.connection_status = True
+        return self._local.connection
+    
+    def _get_cursor(self) -> Cursor:
+        """
+        Obtiene el cursor de la conexión a la base de datos. Si no existe, lo crea.
+        
+        Returns:
+            Cursor: Cursor de la conexión a la base de datos.
+            
+        Example:
+            >>> conn = Connect('mi_db.sqlite')
+            >>> cursor = conn._get_cursor()
+            >>> print(cursor)
+            <sqlite3.Cursor object at 0x...>
+        """
+        if not hasattr(self._local, 'cursor') or not self._local.cursor:
+            self._local.cursor = self._get_connection().cursor()
+        return self._local.cursor
 
     def get_status(self) -> bool:
         """
@@ -94,7 +129,7 @@ class Connect:
             >>> conn.get_status()
             False
         """
-        return self.__connection_status
+        return getattr(self._local, 'connection_status', False)
 
     @handle_exception
     def connect(self) -> bool:
@@ -113,10 +148,15 @@ class Connect:
             print("[!] Ya estás conectado a una base de datos")
             return False
 
-        self.__connection = connect(self.path)
-        self.__cursor = self.__connection.cursor()
-        self.__connection_status = True
-
+        self._local.connection = connect(
+            self.path,
+            check_same_thread=False,
+            timeout=10.0,
+            isolation_level=None,
+        )
+        self._local.cursor = self._local.connection.cursor()
+        self._local.connection_status = True
+        
         print("[i] Conexión exitosa")
         return True
 
@@ -133,9 +173,11 @@ class Connect:
             >>> conn.list_table_names()
             ['users', 'products']
         """
+        cursor = self._get_cursor()
+        
         query = "SELECT name FROM sqlite_master WHERE type='table';"
-        self.__cursor.execute(query)
-        tables = self.__cursor.fetchall()
+        cursor.execute(query)
+        tables = cursor.fetchall()
 
         if not tables:
             print("[i] No se encontraron tablas en la base de datos.")
@@ -159,9 +201,11 @@ class Connect:
             >>> conn.get_column_names('users')
             ['id', 'name', 'email']
         """
+        cursor = self._get_cursor()
+        
         query = f"PRAGMA table_info({table_name});"
-        self.__cursor.execute(query)
-        columns = self.__cursor.fetchall()
+        cursor.execute(query)
+        columns = cursor.fetchall()
 
         if not columns:
             print("[i] No se encontraron columnas en la tabla.")
@@ -185,9 +229,11 @@ class Connect:
             >>> conn.read_table('users')
             [(1, 'John', 'john@example.com'), (2, 'Jane', 'jane@example.com')]
         """
+        cursor = self._get_cursor()
+        
         query = f"SELECT * FROM {table_name}"
-        self.__cursor.execute(query)
-        rows = self.__cursor.fetchall()
+        cursor.execute(query)
+        rows = cursor.fetchall()
 
         if not rows:
             print("[i] No se encontraron registros en la tabla.")
@@ -212,11 +258,13 @@ class Connect:
             >>> conn.search('users', {'name': 'John'})
             [(1, 'John', 'john@example.com')]
         """
+        cursor = self._get_cursor()
+        
         conditions = ' AND '.join([f"{column} = ?" for column in condition.keys()])
         query = f"SELECT * FROM {table_name} WHERE {conditions}"
 
-        self.__cursor.execute(query, tuple(condition.values()))
-        rows = self.__cursor.fetchall()
+        cursor.execute(query, tuple(condition.values()))
+        rows = cursor.fetchall()
 
         if not rows:
             print("[i] No se encontraron registros en la tabla que coincidan con los parámetros de búsqueda.")
@@ -245,12 +293,15 @@ class Connect:
         if not data:
             raise ValueError("No hay datos para insertar")
         
+        connection = self._get_connection()
+        cursor = self._get_cursor()
+        
         columns = ', '.join(data.keys())
         values = ', '.join(['?' for _ in range(len(data))])
         query = f"INSERT INTO {table_name} ({columns}) VALUES ({values})"
 
-        self.__cursor.execute(query, tuple(data.values()))
-        self.__connection.commit()
+        cursor.execute(query, tuple(data.values()))
+        connection.commit()
 
         print("[i] Datos insertados exitosamente")
         return True
@@ -275,6 +326,9 @@ class Connect:
         """
         if not data_list:
             raise ValueError("No hay datos para insertar")
+        
+        connection = self._get_connection()
+        cursor = self._get_cursor()
 
         columns = ', '.join(data_list[0].keys())
         values = ', '.join(['?' for _ in data_list[0].keys()])
@@ -282,8 +336,8 @@ class Connect:
 
         values_list = [tuple(data.values()) for data in data_list]
 
-        self.__cursor.executemany(query, values_list)
-        self.__connection.commit()
+        cursor.executemany(query, values_list)
+        connection.commit()
 
         print("[i] Registros insertados exitosamente")
         return True
@@ -307,13 +361,16 @@ class Connect:
             [i] Datos actualizados exitosamente
             True
         """
+        connection = self._get_connection()
+        cursor = self._get_cursor()
+        
         set_clause = ', '.join([f"{key} = ?" for key in data.keys()])
         where_clause = ' AND '.join([f"{key} = ?" for key in condition.keys()])
         query = f"UPDATE {table_name} SET {set_clause} WHERE {where_clause}"
         values = tuple(data.values()) + tuple(condition.values())
 
-        self.__cursor.execute(query, values)
-        self.__connection.commit()
+        cursor.execute(query, values)
+        connection.commit()
 
         print("[i] Datos actualizados exitosamente")
         return True
@@ -336,10 +393,13 @@ class Connect:
             [i] Datos eliminados exitosamente
             True
         """
+        connection = self._get_connection()
+        cursor = self._get_cursor()
+        
         query = f"DELETE FROM {table_name} WHERE " + " AND ".join([f"{field} = ?" for field in condition.keys()])
 
-        self.__cursor.execute(query, tuple(condition.values()))
-        self.__connection.commit()
+        cursor.execute(query, tuple(condition.values()))
+        connection.commit()
 
         print("[i] Datos eliminados exitosamente")
         return True
@@ -363,6 +423,8 @@ class Connect:
             [i] Tabla 'users' creada exitosamente
             True
         """
+        cursor = self._get_cursor()
+        
         column_defs = []
         for column_name, data_type in columns.items():
             if not apply_constraints:
@@ -383,7 +445,7 @@ class Connect:
         columns_sql = ", ".join(column_defs)
         query = f"CREATE TABLE {table_name} ({columns_sql})"
 
-        self.__cursor.execute(query)
+        cursor.execute(query)
 
         print(f"[i] Tabla '{table_name}' creada exitosamente")
         return True
@@ -407,10 +469,13 @@ class Connect:
             [i] Columna 'age' añadida exitosamente a la tabla 'users'
             True
         """
+        connection = self._get_connection()
+        cursor = self._get_cursor()
+        
         query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"
 
-        self.__cursor.execute(query)
-        self.__connection.commit()
+        cursor.execute(query)
+        connection.commit()
 
         print(f"[i] Columna '{column_name}' añadida exitosamente a la tabla '{table_name}'")
         return True
@@ -433,6 +498,9 @@ class Connect:
             [i] Columna 'age' eliminada exitosamente de la tabla 'users'
             True
         """
+        connection = self._get_connection()
+        cursor = self._get_cursor()
+        
         columns = self.get_column_names(table_name)
         if column_name not in columns:
             raise ValueError(f"La columna '{column_name}' no existe en la tabla '{table_name}'")
@@ -442,15 +510,15 @@ class Connect:
 
         temp_table_name = f"{table_name}_temp"
         create_temp_table_query = f"CREATE TABLE {temp_table_name} AS SELECT {new_columns_sql} FROM {table_name}"
-        self.__cursor.execute(create_temp_table_query)
+        cursor.execute(create_temp_table_query)
 
         drop_table_query = f"DROP TABLE {table_name}"
-        self.__cursor.execute(drop_table_query)
+        cursor.execute(drop_table_query)
 
         rename_table_query = f"ALTER TABLE {temp_table_name} RENAME TO {table_name}"
-        self.__cursor.execute(rename_table_query)
+        cursor.execute(rename_table_query)
 
-        self.__connection.commit()
+        connection.commit()
 
         print(f"[i] Columna '{column_name}' eliminada exitosamente de la tabla '{table_name}'")
         return True
@@ -472,10 +540,13 @@ class Connect:
             [i] Tabla 'users' eliminada exitosamente
             True
         """
+        connection = self._get_connection()
+        cursor = self._get_cursor()
+        
         query = f"DROP TABLE IF EXISTS {table_name}"
 
-        self.__cursor.execute(query)
-        self.__connection.commit()
+        cursor.execute(query)
+        connection.commit()
 
         print(f"[i] Tabla '{table_name}' eliminada exitosamente")
         return True
@@ -496,8 +567,9 @@ class Connect:
             >>> conn.custom_query('SELECT * FROM users WHERE age > 30')
             [(1, 'John', 35), (2, 'Jane', 40)]
         """
-        self.__cursor.execute(query)
-        results = self.__cursor.fetchall()
+        cursor = self._get_cursor()
+        cursor.execute(query)
+        results = cursor.fetchall()
         return results
 
     def close(self) -> None:
@@ -510,8 +582,16 @@ class Connect:
         Example:
             >>> conn.close()
         """
-        if hasattr(self, '_Connect__cursor') and self.__cursor:
-            self.__cursor.close()
-        if hasattr(self, '_Connect__connection') and self.__connection:
-            self.__connection.close()
-        self.__connection_status = False
+        if hasattr(self._local, 'cursor') and self._local.cursor:
+            self._local.cursor.close()
+        if hasattr(self._local, 'connection') and self._local.connection:
+            self._local.connection.close()
+        
+        if hasattr(self._local, 'connection_status'):
+            del self._local.connection_status
+        if hasattr(self._local, 'connection'):
+            del self._local.connection
+        if hasattr(self._local, 'cursor'):
+            del self._local.cursor
+        
+        print("[i] Conexión cerrada exitosamente")
